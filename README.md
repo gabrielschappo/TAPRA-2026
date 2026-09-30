@@ -7,3 +7,8 @@ Projeto da disciplina de **Tópicos Avançados em Programação (TAPRA)** — 20
 - Gabriel Heidemann Schappo
 - Lucas Borges do Amaral
 - Vitor Tasca da Costa
+
+## Arquitetura
+
+![Arquitetura do projeto](docs/arquitetura.png)
+
