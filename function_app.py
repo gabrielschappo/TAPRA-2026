@@ -110,3 +110,8 @@ def extract_fila(myTimer: func.TimerRequest) -> None:
               use_monitor=False)
 def extract_sla(myTimer: func.TimerRequest) -> None:
     extrair_tabela("sla")
+
+@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
+              use_monitor=False)
+def extract_solicitante(myTimer: func.TimerRequest) -> None:
+    extrair_tabela("solicitante")
