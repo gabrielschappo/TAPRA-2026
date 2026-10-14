@@ -1,0 +1,16 @@
+# Configuracao das ferramentas de qualidade usadas na esteira de CI.
+
+# Formatacao automatica
+[tool.black]
+line-length = 88
+
+# Ordenacao de imports, no mesmo estilo do black para os dois nao brigarem
+[tool.isort]
+profile = "black"
+
+# Linting: E/W = estilo PEP8 (pycodestyle), F = erros comuns (pyflakes)
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]

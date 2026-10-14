@@ -16,7 +16,9 @@ VARIAVEIS_CONEXAO = ["HOST", "DATABASE", "USER", "PASSWORD"]
 def obter_string_conexao() -> str:
     faltando = [nome for nome in VARIAVEIS_CONEXAO if not os.environ.get(nome)]
     if faltando:
-        raise RuntimeError(f"Variaveis de ambiente nao configuradas: {', '.join(faltando)}")
+        raise RuntimeError(
+            f"Variaveis de ambiente nao configuradas: {', '.join(faltando)}"
+        )
 
     # Senha entre chaves para o ODBC aceitar caracteres especiais como ; = #
     senha = os.environ["PASSWORD"].replace("}", "}}")
@@ -34,7 +36,7 @@ def obter_string_conexao() -> str:
 
 
 def extrair_tabela(tabela: str) -> list:
-    logging.info('[extract_%s] Iniciando extracao de itsm.%s', tabela, tabela)
+    logging.info("[extract_%s] Iniciando extracao de itsm.%s", tabela, tabela)
 
     try:
         conexao = pyodbc.connect(obter_string_conexao())
@@ -48,70 +50,117 @@ def extrair_tabela(tabela: str) -> list:
             conexao.close()
 
     except Exception as erro:
-        logging.error('[extract_%s] Erro ao extrair itsm.%s: %s', tabela, tabela, erro)
+        logging.error("[extract_%s] Erro ao extrair itsm.%s: %s", tabela, tabela, erro)
         raise
 
-    logging.info('[extract_%s] %d registros extraidos de itsm.%s | colunas: %s',
-                 tabela, len(registros), tabela, ', '.join(colunas))
+    logging.info(
+        "[extract_%s] %d registros extraidos de itsm.%s | colunas: %s",
+        tabela,
+        len(registros),
+        tabela,
+        ", ".join(colunas),
+    )
     for registro in registros[:3]:
-        logging.info('[extract_%s] amostra: %s', tabela, registro)
+        logging.info("[extract_%s] amostra: %s", tabela, registro)
 
     return registros
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_analista(myTimer: func.TimerRequest) -> None:
     extrair_tabela("analista")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_categoria(myTimer: func.TimerRequest) -> None:
     extrair_tabela("categoria")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_chamado(myTimer: func.TimerRequest) -> None:
     extrair_tabela("chamado")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_chamado_sla(myTimer: func.TimerRequest) -> None:
     extrair_tabela("chamado_sla")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_chamado_status_historico(myTimer: func.TimerRequest) -> None:
     extrair_tabela("chamado_status_historico")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_cliente_organizacao(myTimer: func.TimerRequest) -> None:
     extrair_tabela("cliente_organizacao")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_csat_avaliacao(myTimer: func.TimerRequest) -> None:
     extrair_tabela("csat_avaliacao")
 
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_fila(myTimer: func.TimerRequest) -> None:
     extrair_tabela("fila")
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_sla(myTimer: func.TimerRequest) -> None:
     extrair_tabela("sla")
 
-@app.timer_trigger(schedule=AGENDA_EXTRACAO, arg_name="myTimer", run_on_startup=False,
-              use_monitor=False)
+
+@app.timer_trigger(
+    schedule=AGENDA_EXTRACAO,
+    arg_name="myTimer",
+    run_on_startup=False,
+    use_monitor=False,
+)
 def extract_solicitante(myTimer: func.TimerRequest) -> None:
     extrair_tabela("solicitante")
