@@ -30,3 +30,34 @@ jobs:
 
       - name: Ordem dos imports (isort)
         run: isort --check-only --diff .
+
+  deploy:
+    needs: validar
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AZURE_FUNCTIONAPP_NAME: "funcapp-tapra-gabrielschappo"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Login no Azure (OIDC, sem senha guardada no GitHub)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy das Functions
+        uses: Azure/functions-action@v1
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: .
+          remote-build: true
+          respect-funcignore: true
