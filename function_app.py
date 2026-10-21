@@ -1,16 +1,23 @@
+import json
 import logging
 import os
+from datetime import date, datetime, time, timezone
 
 import azure.functions as func
 import pyodbc
+from azure.storage.blob import BlobServiceClient, ContentSettings
 
 app = func.FunctionApp()
 
-# Agenda compartilhada por todas as extracoes: todo minuto, no segundo 0.
-AGENDA_EXTRACAO = "0 * * * * *"
+# Agenda compartilhada por todas as extracoes: a cada 5 minutos, no segundo 0.
+AGENDA_EXTRACAO = "0 */5 * * * *"
 
 # Credenciais vem das variaveis de ambiente configuradas no Azure (App Settings).
 VARIAVEIS_CONEXAO = ["HOST", "DATABASE", "USER", "PASSWORD"]
+
+# Destino no Data Lake: container bronze, organizado por fonte/entidade/data.
+CONTAINER_BRONZE = "bronze"
+FONTE = "itsm"
 
 
 def obter_string_conexao() -> str:
@@ -66,6 +73,63 @@ def extrair_tabela(tabela: str) -> list:
     return registros
 
 
+# O JSON nao sabe representar datas nem Decimal: datas viram texto ISO 8601
+# (ex: 2026-05-11T22:29:16) e o resto vira texto, sem perder precisao.
+def serializar_valor(valor):
+    if isinstance(valor, (date, time)):
+        return valor.isoformat()
+    return str(valor)
+
+
+# itsm/<tabela>/ano=AAAA/mes=MM/dia=DD/<tabela>_AAAAMMDDTHHMMSSZ.json, sempre em UTC
+def montar_caminho_bronze(tabela: str, momento: datetime) -> str:
+    return (
+        f"{FONTE}/{tabela}/"
+        f"ano={momento:%Y}/mes={momento:%m}/dia={momento:%d}/"
+        f"{tabela}_{momento:%Y%m%dT%H%M%SZ}.json"
+    )
+
+
+def salvar_na_bronze(tabela: str, registros: list) -> str:
+    conexao_storage = os.environ.get("DATALAKE_CONNECTION_STRING")
+    if not conexao_storage:
+        raise RuntimeError(
+            "Variavel de ambiente nao configurada: DATALAKE_CONNECTION_STRING"
+        )
+
+    caminho = montar_caminho_bronze(tabela, datetime.now(timezone.utc))
+    conteudo = json.dumps(
+        registros, default=serializar_valor, ensure_ascii=False, indent=2
+    )
+
+    try:
+        servico = BlobServiceClient.from_connection_string(conexao_storage)
+        arquivo = servico.get_blob_client(container=CONTAINER_BRONZE, blob=caminho)
+        arquivo.upload_blob(
+            conteudo.encode("utf-8"),
+            overwrite=True,
+            content_settings=ContentSettings(content_type="application/json"),
+        )
+    except Exception as erro:
+        logging.error("[extract_%s] Erro ao salvar na bronze: %s", tabela, erro)
+        raise
+
+    logging.info(
+        "[extract_%s] %d registros salvos em %s/%s",
+        tabela,
+        len(registros),
+        CONTAINER_BRONZE,
+        caminho,
+    )
+    return caminho
+
+
+# Pipeline de cada tabela: extrai do banco de origem e grava o JSON na bronze.
+def extrair_e_salvar(tabela: str) -> None:
+    registros = extrair_tabela(tabela)
+    salvar_na_bronze(tabela, registros)
+
+
 @app.timer_trigger(
     schedule=AGENDA_EXTRACAO,
     arg_name="myTimer",
@@ -73,7 +137,7 @@ def extrair_tabela(tabela: str) -> list:
     use_monitor=False,
 )
 def extract_analista(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("analista")
+    extrair_e_salvar("analista")
 
 
 @app.timer_trigger(
@@ -83,7 +147,7 @@ def extract_analista(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_categoria(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("categoria")
+    extrair_e_salvar("categoria")
 
 
 @app.timer_trigger(
@@ -93,7 +157,7 @@ def extract_categoria(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_chamado(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("chamado")
+    extrair_e_salvar("chamado")
 
 
 @app.timer_trigger(
@@ -103,7 +167,7 @@ def extract_chamado(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_chamado_sla(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("chamado_sla")
+    extrair_e_salvar("chamado_sla")
 
 
 @app.timer_trigger(
@@ -113,7 +177,7 @@ def extract_chamado_sla(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_chamado_status_historico(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("chamado_status_historico")
+    extrair_e_salvar("chamado_status_historico")
 
 
 @app.timer_trigger(
@@ -123,7 +187,7 @@ def extract_chamado_status_historico(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_cliente_organizacao(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("cliente_organizacao")
+    extrair_e_salvar("cliente_organizacao")
 
 
 @app.timer_trigger(
@@ -133,7 +197,7 @@ def extract_cliente_organizacao(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_csat_avaliacao(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("csat_avaliacao")
+    extrair_e_salvar("csat_avaliacao")
 
 
 @app.timer_trigger(
@@ -143,7 +207,7 @@ def extract_csat_avaliacao(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_fila(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("fila")
+    extrair_e_salvar("fila")
 
 
 @app.timer_trigger(
@@ -153,7 +217,7 @@ def extract_fila(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_sla(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("sla")
+    extrair_e_salvar("sla")
 
 
 @app.timer_trigger(
@@ -163,4 +227,4 @@ def extract_sla(myTimer: func.TimerRequest) -> None:
     use_monitor=False,
 )
 def extract_solicitante(myTimer: func.TimerRequest) -> None:
-    extrair_tabela("solicitante")
+    extrair_e_salvar("solicitante")
