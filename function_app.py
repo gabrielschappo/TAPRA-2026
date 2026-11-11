@@ -49,7 +49,6 @@ def obter_string_conexao(prefixo: str = "") -> str:
 
     host, banco, usuario, senha = (os.environ[nome] for nome in variaveis)
 
-    # Senha entre chaves para o ODBC aceitar caracteres especiais como ; = #
     senha = senha.replace("}", "}}")
 
     return (
@@ -157,8 +156,6 @@ def extrair_e_salvar(tabela: str) -> None:
     salvar_na_bronze(tabela, registros)
 
 
-# O banco de destino e serverless: pausado, ele leva ~1 min para voltar e recusa as
-# primeiras conexoes. Por isso tenta algumas vezes antes de desistir.
 def conectar_com_retentativa(
     string_conexao: str, tentativas: int = 5, espera: int = 20
 ):
@@ -179,8 +176,6 @@ def conectar_com_retentativa(
             sleep(espera)
 
 
-# Le o arquivo mais recente da tabela na pasta de hoje da bronze. O nome termina com
-# o horario (AAAAMMDDTHHMMSSZ), entao o maior nome e o mais recente.
 def ler_ultimo_arquivo_bronze(container, tabela: str, dia: datetime) -> list:
     prefixo = f"{FONTE}/{tabela}/ano={dia:%Y}/mes={dia:%m}/dia={dia:%d}/"
     arquivos = [blob.name for blob in container.list_blobs(name_starts_with=prefixo)]
@@ -192,8 +187,6 @@ def ler_ultimo_arquivo_bronze(container, tabela: str, dia: datetime) -> list:
     return json.loads(container.download_blob(ultimo).readall())
 
 
-# Insere em lotes de varias linhas por comando: o SQL Server aceita no maximo 2100
-# parametros por comando, entao cada lote fica abaixo de 2000.
 def inserir_registros(cursor, tabela: str, registros: list) -> None:
     if not registros:
         return
@@ -211,9 +204,6 @@ def inserir_registros(cursor, tabela: str, registros: list) -> None:
         cursor.execute(comando, [registro[col] for registro in lote for col in colunas])
 
 
-# Recarga completa do destino numa unica transacao: apaga tudo (filhas antes das
-# maes) e insere de novo (maes antes das filhas). Se qualquer passo falhar, o
-# rollback desfaz tudo e o destino continua como estava, sem dados pela metade.
 def carregar_banco_destino() -> None:
     servico = BlobServiceClient.from_connection_string(obter_conexao_storage())
     container = servico.get_container_client(CONTAINER_BRONZE)
@@ -349,8 +339,6 @@ def extract_solicitante(myTimer: func.TimerRequest) -> None:
     extrair_e_salvar("solicitante")
 
 
-# Carga diaria do banco de destino. use_monitor=True guarda a agenda no storage: se o
-# app estiver fora do ar no horario, a carga roda assim que ele voltar.
 @app.timer_trigger(
     schedule=AGENDA_CARGA,
     arg_name="myTimer",
