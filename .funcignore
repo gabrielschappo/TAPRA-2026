@@ -8,3 +8,5 @@ test
 pyproject.toml
 requirements-dev.txt
 sql
+dashboard
+.streamlit
